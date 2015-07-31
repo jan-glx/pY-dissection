@@ -46,6 +46,15 @@ summary(df)
 
 
 
-df %<>% extract(Confidence.value.s.,c("confidence"),"^intact-miscore\\:(.*)$",convert=T) 
-
+df %<>% extract(Confidence.value.s.,c("confidence"),"^intact\\-miscore\\:(.*)$",convert=T) %>%
+  extract(Experimental.role.s..interactor,c("role"),'^psi\\-mi\\:"MI\\:(?:\\d+)"\\((prey|bait|neutral)(?: component)?\\)$',convert=T)  %>%
+  separate(ID.s..interactor,c("Interactor_ID_db","Interactor_ID"),'\\:',convert=T) 
+  
 summary(df)
+
+
+# extract(df$Interaction.annotation.s.,c(),
+#   "[comment:\"\\\"Phosphorylation-dependent interaction. The interaction is only detected in the presence of the following kinases: (.+\\(.+\\),)*\\.\\\"
+# \"|comment:\"\\\"The interaction failed to show if kinase-dead versions of ABL2 (P42684) or FYN (P06241) were used.\\\"\"|figure legend:Suppl. table S3, suppl. fig. S4|full coverage:Only protein-protein interactions|curation depth:imex curation)
+# 
+# 
