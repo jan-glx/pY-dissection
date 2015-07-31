@@ -1,5 +1,10 @@
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load(magrittr,tidyr,dplyr,ggplot2)
+library(magrittr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+#uncomment the following on the first run:
+source("http://bioconductor.org/biocLite.R")
+biocLite("org.Hs.eg.db")
 
 df <- read.table('../Data/IM-22632.txt',sep='\t',quote="",stringsAsFactors=F,header=T,comment.char = "")#,stringsAsFactors=F
 df %<>% select(Feature.s..interactor.A,
@@ -51,6 +56,14 @@ df %<>% extract(Confidence.value.s.,c("confidence"),"^intact\\-miscore\\:(.*)$",
   separate(ID.s..interactor,c("Interactor_ID_db","Interactor_ID"),'\\:',convert=T) 
   
 summary(df)
+
+summary(df)
+
+df %>% filter(Interactor_ID_db == "intact") %>% 
+  select(Interactor_ID_db, Interactor_ID,Xref.s..interactor) %>% 
+  extract(Xref.s..interactor,c("refseq"),"refseq:([A-Z]+\\_\\d+(?:.\\d+)?)(?:[(|].*)?$",remove=T,convert=T) %>%
+  distinct()
+
 
 
 # extract(df$Interaction.annotation.s.,c(),
