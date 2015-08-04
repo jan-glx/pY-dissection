@@ -97,7 +97,6 @@ sequences$From = rownames(sequences)
 rownames(sequences) <- NULL
 # and do nothing with it
 
-
 # Loading sequences and know modifications from uniprot for all ORFst --------------------------------------------------------------------
 rm(list = ls())
 df = read.table(
@@ -144,6 +143,20 @@ if (length(dropped) != 0) {
   uniprot_data %<>% filter(stri_length(uniprot_data$Sequence) != 0)
 }
 
+# done getting data fronm uniprot, save results
+write.table(
+  uniprot_data, "../Data/all_data_from_uniprot.tsv", sep = "\t", row.names = F, qmethod =
+    "double"
+)
+
+# parsing data from uniprot --------------------------------------------------------------------
+rm(list = ls())
+df = read.table(
+  "../Data/all_intact_data_from_grossmanEtAl.tsv", sep = "\t",header = T,stringsAsFactors = F
+)
+uniprot_data = read.table(
+  "../Data/all_data_from_uniprot.tsv", sep = "\t",header = T,colClasses = "character"
+)
 
 quotemeta <- function(string) {
   gsub("([.|()\\^{}+$*?]|\\[|\\])", "\\\\\\1", string)
@@ -207,24 +220,28 @@ uniprot_data =  uniprot_data %>% rowwise() %>%
                     )
                   )) %>% ungroup()
 
-head(uniprot_data)
-
 canonical2isoform <-
-  function(canonical_sequence, mechismo_dif_string) {
-    sequence = canonical_sequence
-    ops = strsplit(mechismo_dif_string, " ")
-    idx_map = 1:nchar(canonical_sequence)
-    for (op in ops) {
-      if (nchar(op) == 3) {
-        print(2)
-      }else{
-        print(4)
-      }
-    }
+  function(canonical_sequence, ops) {
+    sequence =  strsplit(canonical_sequence,"")[[1]]
+    colnames(ops) <- c("full","from","position","del","to")
+    ops %<>% data.frame(stringsAsFactors = F) %>% mutate(del = del == 'X',
+                                                         position = as.numeric(position))
+    sequence[ops$pos] = ops$to
+    idx_map = cumsum(str_length(sequence))
+    list(
+      isoform_sequence = paste0(sequence,collapse = ""), canonical2isoform_idx =
+        idx_map
+    )
   }
+canonical_sequence_list = uniprot_data$Sequence
+op_list = str_match_all(uniprot_data$mechismo_dif_string, "([A-Z])(\\d+)(X(?![A-Z]))?([A-WYZ]?[A-Z]*)")
+tmp = mapply(canonical2isoform , canonical_sequence_list, op_list)
+uniprot_data$isoform_sequence = tmp[c(T,F)]
+uniprot_data$canonical2isoform_idx = tmp[c(F,T)]
 
 write.table(
-  uniprot_data, "../Data/uniprotdata_4all_hits.tsv", sep = "\t", row.names = F
+  uniprot_data, "../Data/uniprotdata_4all_hits.tsv", sep = "\t", row.names = F, qmethod =
+    "double"
 )
 
 # extract(df$Interaction.annotation.s.,c(),
