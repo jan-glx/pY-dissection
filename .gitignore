@@ -3,3 +3,5 @@
 .RData
 packrat/lib*/
 packrat/src/
+bericht.tex
+tmp.R
