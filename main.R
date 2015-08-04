@@ -236,18 +236,12 @@ canonical2isoform <-
 canonical_sequence_list = uniprot_data$Sequence
 op_list = str_match_all(uniprot_data$mechismo_dif_string, "([A-Z])(\\d+)(X(?![A-Z]))?([A-WYZ]?[A-Z]*)")
 tmp = mapply(canonical2isoform , canonical_sequence_list, op_list)
-uniprot_data$isoform_sequence = tmp[c(T,F)]
-uniprot_data$canonical2isoform_idx = tmp[c(F,T)]
+uniprot_data$isoform_sequence = unlist(tmp[c(T,F)])
+canonical2isoform_idx = tmp[c(F,T)]
 
 write.table(
   uniprot_data, "../Data/uniprotdata_4all_hits.tsv", sep = "\t", row.names = F, qmethod =
     "double"
 )
+save(canonical2isoform_idx,file="../Data/canonical2isoform_idx.RData")
 
-# extract(df$Interaction.annotation.s.,c(),
-#   "[comment:\"\\\"Phosphorylation-dependent interaction. The interaction is only detected in the presence of the following kinases: (.+\\(.+\\),)*\\.\\\"
-# \"|comment:\"\\\"The interaction failed to show if kinase-dead versions of ABL2 (P42684) or FYN (P06241) were used.\\\"\"|figure legend:Suppl. table S3, suppl. fig. S4|full coverage:Only protein-protein interactions|curation depth:imex curation)
-#
-#
-
-#unique(unlist(lapply(df$Interaction.annotation.s.,function(x){strsplit(x,split="\\|")})))
