@@ -1,0 +1,12 @@
+\documentclass{article}
+
+\title{Gleixner bei Betts}
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+\section{Methods}
+\subsection{Data preparation}
+Experimental data from the Yeast-three-hybrid experiments conducted by \cite{Grossmann2015} was obtained from IntAct\cite{Orchard2014} using the querry "imex:IM-22632". Interactor IDs not given as UniProtKB isoform identifiers were mapped to such by the NCBI refseq\cite{Pruitt2014} entries in the "Xref(s) interactor" fields of the IntAct entries using UniProt's ID mapping tool. Entries containing interactor  with ID "EBI-10696557" or "EBI-10696575" were dropped from the analysis as they could not be mapped.
+
+
+\end{document}
