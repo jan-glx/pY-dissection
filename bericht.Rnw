@@ -6,7 +6,11 @@
 
 \section{Methods}
 \subsection{Data preparation}
-Experimental data from the Yeast-three-hybrid experiments conducted by \cite{Grossmann2015} was obtained from IntAct\cite{Orchard2014} using the querry "imex:IM-22632". Interactor IDs not given as UniProtKB isoform identifiers were mapped to such by the NCBI refseq\cite{Pruitt2014} entries in the "Xref(s) interactor" fields of the IntAct entries using UniProt's ID mapping tool. Entries containing interactor  with ID "EBI-10696557" or "EBI-10696575" were dropped from the analysis as they could not be mapped.
+Experimental data from the Yeast-three-hybrid experiments conducted by \cite{Grossmann2015} was obtained from IntAct\cite{Orchard2014} using the querry "imex:IM-22632". Interactor IDs not given as UniProtKB isoform identifiers were mapped to such by the NCBI refseq\cite{Pruitt2014} entries in the "Xref(s) interactor" fields of the IntAct entries using UniProt's ID mapping tool. Entries containing interactor  with ID "EBI-10696557" or "EBI-10696575" were dropped from the analysis as they could not be mapped. Protein sequences of the canonical forms and differences for the isoforms as well as potential information for for know Phosphorilation sites were obtained from uniprot using "columns=id,sequence,feature(MODIFIED RESIDUE),feature(ALTERNATIVE SEQUENCE),comment(ALTERNATIVE PRODUCTS)" on the REST interface. After mapping of isoform IDs to isoform names mechismo diff strings were generated from the uniprot diff strings by specifying changed regions as deleted togther with an insert at the first changed residue (e.g. 237: AFH -> SDKRAGP would be turned into F238X H239X A237SDKRAGP).
+\section{Mechismo input generation}
+Each input line consited of the UniUrot ID of the protein a potetial modified diff string for the isoform and potential an other diff string specifying a phosphorilation (e.g. Y401Yp).
+The michismo diff string for the isoform was parsed to yield changed and thus the unchanged residues. For each Tyrosin in the canonical sequence that is unchanged in the isoform, an additional input line was generated specifiying its phosphorilation with the additional diff string. Similary, for all tyrosins in insert sequences of the mechismo diff string for the isoform a line was added replacing the Y with a Yp.
+
 
 
 \end{document}
