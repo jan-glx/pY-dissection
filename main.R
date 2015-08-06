@@ -17,8 +17,6 @@ df <-
 df %<>% select(
   Feature.s..interactor.A,
   Feature.s..interactor.B,
-  Identification.method.participant.A,
-  Identification.method.participant.B,
   Annotation.s..interactor.A,
   Annotation.s..interactor.B,
   Xref.s..interactor.B,
@@ -27,14 +25,25 @@ df %<>% select(
   Experimental.role.s..interactor.B,
   ID.s..interactor.A = X.ID.s..interactor.A,
   ID.s..interactor.B,
-  Host.organism.s.,
   Interaction.annotation.s.,
   Interaction.identifier.s.,
   Confidence.value.s.,
-  Taxid.interactor = Taxid.interactor.B,
-  Interaction.type.s.,
   Interaction.detection.method.s.
 )
+df %<>% extract(Interaction.annotation.s.,
+                c("kinase.dep"), 
+                paste0("Phosphorylation\\-dependent interaction\\. The interaction is only detected ",
+                       "in the presence of the following kinases\\: ([^\\.]*)"))
+df$kinase.dep[is.na(df$kinase.dep)]=""
+df %<>% 
+  filter(Interaction.detection.method.s.=="psi-mi:\"MI:0397\"(two hybrid array)") %>% 
+  select(-Interaction.detection.method.s.) #Since most interaction assays are orthogonal, each detecting its own 
+# subset of true interactions, vali- dation of data sets means comparing validation rates rather than discarding 
+# pairs that do not bind in the co-IP assay (Braun et al, 2009; Venkatesan et al, 2009). The validation rate of
+# ~50% (Fig 3A) is similar for phospho-tyrosine-dependent and phospho-tyrosine- independent interactions. It is 
+# lower than what was observed for more stable PPIs such as spliceosomal interactions (Hegele et al, 2012). 
+# However, it compares well to validation rates reported for other representative sets of PPIs with this co-IP 
+# assay (Braun et al, 2009; Weimann et al, 2013)
 
 df %<>% gather(key,value, ends_with(".A"), ends_with(".B")) %>%
   extract(key,c("var","Interactor"),"(.*)\\.([AB])$") %>%
@@ -68,9 +77,8 @@ params =   c(
 )
 params = lapply(params, URLencode)
 query = paste(params[c(T,F)], params[c(F,T)], sep = "=", collapse = "&")
-mapping = read.table(paste0(url,'?',query), header = T, stringsAsFactors =
-                       F)
-mapping %<>% right_join(to_map)
+mapping = read.table(paste0(url,'?',query), header = T, stringsAsFactors = F)
+mapping %<>% distinct(From) %>% right_join(to_map)
 mapping
 
 df %<>% left_join(select(mapping,-From))
@@ -212,7 +220,7 @@ parse_alternative_sequence <-
 uniprot_data =  uniprot_data %>% rowwise() %>%
   dplyr::mutate(mechismo_dif_string =
                   ifelse(
-                    isoform == "",
+                    is.na(isoform),
                     "",
                     parse_alternative_sequence(
                       Alternative.sequence,Alternative.products..isoforms.,

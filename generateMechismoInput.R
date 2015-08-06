@@ -19,29 +19,30 @@ mod_pos_list = lapply(str_match_all(uniprot_data$mechismo_dif_string, "[A-Z](\\d
 
 unmod_Y_pos_list = mapply(setdiff , Y_pos_list, mod_pos_list)
 
-inserted_Y_pos_list = lapply(str_locate_all(uniprot_data$mechismo_dif_string, "Y(?!\\d)"),function(x){x[,1]})
+generateAllMechismoStringsForInsertion <-
+  function(ID,mechismo_dif_string, inserted_Y_pos) {
+    if (length(inserted_Y_pos) > 0)
+      paste0(
+        ID, "/", str_sub(mechismo_dif_string,1,inserted_Y_pos),
+        "p",str_sub(mechismo_dif_string,inserted_Y_pos + 1,-1)
+      )
+  }
 
-
-generateAllMechismoStrings = function(ID, mechismo_dif_string, inserted_Y_pos,unmod_Y_pos){
-  mechismo_strings= paste(ID,mechismo_dif_string)
-  if(length(inserted_Y_pos)>0)
-    mechismo_strings = c(mechismo_strings, paste0(ID, " ", 
-                              str_sub(mechismo_dif_string,1,inserted_Y_pos),
-                              "p",str_sub(mechismo_dif_string,inserted_Y_pos+1,-1)))
+generateAllMechismoStrings = function(ID, mechismo_dif_string, unmod_Y_pos){
+  mechismo_dif_strings = str_split(mechismo_dif_string," ")[[1]]
+  mechismo_strings= paste0(ID,'/',mechismo_dif_strings)
+  inserted_Y_pos_lists = lapply(str_locate_all(mechismo_dif_strings, "Y(?!\\d)"),function(x){x[,1]})
+  mechismo_strings = c(mechismo_strings, unlist(mapply(generateAllMechismoStringsForInsertion,
+                                                     ID,mechismo_dif_strings,inserted_Y_pos_lists)))
   if(length(unmod_Y_pos)>0)
-    mechismo_strings = c(mechismo_strings, paste0(ID, " ",mechismo_dif_string," Y",unmod_Y_pos,"Yp"))
+    mechismo_strings = c(mechismo_strings, paste0(ID, "/Y",unmod_Y_pos,"Yp"))
   mechismo_strings
 }
-generateAllMechismoStrings(uniprot_data$canonic[328],uniprot_data$mechismo_dif_string[328],
-                           inserted_Y_pos_list[[328]],unmod_Y_pos_list[[328]])
-generateAllMechismoStrings(uniprot_data$canonic[1],uniprot_data$mechismo_dif_string[1],
-                           inserted_Y_pos_list[[1]],unmod_Y_pos_list[[1]])
 
-unmod_Y_pos_list = mapply(generateAllMechismoStrings, 
+mechismo_input_line_list = mapply(generateAllMechismoStrings, 
                           uniprot_data$canonic,
                           uniprot_data$mechismo_dif_string, 
-                          inserted_Y_pos_list,
                           unmod_Y_pos_list)
-cat(unlist(unmod_Y_pos_list),file="../Data/mechismoinput.txt",sep="\n")
+cat(unlist(mechismo_input_line_list),file="../Data/mechismoinput.txt",sep="\n")
 
 
