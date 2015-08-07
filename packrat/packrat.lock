@@ -1,6 +1,6 @@
 PackratFormat: 1.4
 PackratVersion: 0.4.4
-RVersion: 3.2.0
+RVersion: 3.2.1
 Repos: CRAN=https://cran.rstudio.com/,
     CRANextra=http://www.stats.ox.ac.uk/pub/RWin,
     BioCsoft=http://bioconductor.org/packages/3.2/bioc,
@@ -131,7 +131,11 @@ Hash: 2676dd5f88890910962b733b0f9540e1
 Requires: magrittr, stringi
 
 Package: tidyr
-Source: CRAN
-Version: 0.2.0
-Hash: 3445f04db2073bc56edcf672268ad48a
-Requires: dplyr, lazyeval, reshape2, stringi
+Source: github
+Version: 0.2.0.9000
+Hash: 0703b1ec7c1fd694fe5c06c3335e378e
+Requires: Rcpp, dplyr, lazyeval, magrittr, reshape2, stringi
+GithubRepo: tidyr
+GithubUsername: hadley
+GithubRef: master
+GithubSha1: 0dc87b2fac5fc98c59b0c0a5b4b7c0a3ef7e1cbd
