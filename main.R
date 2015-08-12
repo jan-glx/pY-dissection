@@ -116,7 +116,8 @@ show(proteins["intact"])
 
 proteins=proteins["uniprotkb"][,ID_DB:=NULL]
 
-proteins[, c('canonic','isoform') := data.table(str_match(proteins$ID, "^([^\\-]*)(?:\\-(.*))?$")[,2:3]) ]
+proteins[, c('canonic','isoform') := data.table(str_match(proteins$ID, "^([^\\-]*)(?:\\-(.*))?$")[,2:3])
+         ][, isoform=as.integer(isoform)]
 setkey(proteins,"canonic")
 uniprot_ACCs_canonic = unique(proteins)$canonic
 
@@ -168,7 +169,8 @@ rm(list = ls())
 df = read.table(
   "../Data/interactions_grossmann.tsv", sep = "\t",header = T,stringsAsFactors = F
 )
-uniprot_data = fread("../Data/all_data_from_uniprot.tsv",sep="\t")
+uniprot_data = fread("../Data/all_data_from_uniprot.tsv",sep="\t")[,isoform:=as.integer(isoform)]
+
 
 quotemeta <- function(string) {
   gsub("([.|()\\^{}+$*?]|\\[|\\])", "\\\\\\1", string)
@@ -250,7 +252,16 @@ uniprot_data[,
 
 canonical2isoform_idx = uniprot_data$canonical2isoform_idx
 save(canonical2isoform_idx,file="../Data/canonical2isoform_idx.RData")
-uniprot_data[,canonical2isoform_idx:=NULL]
+uniprot_data[,':='(canonical2isoform_idx=NULL,
+                   Alternative.products..isoforms.=NULL,
+                   Alternative.sequence=NULL)]
+
+
+uniprot_data[,Modified.residue:=lapply(str_match_all(uniprot_data$Modified.residue,"MOD_RES (\\d+) \\d+ Phosphotyrosine"),
+                             function(x){as.integer(x[,2])})
+   ]
+setnames(uniprot_data,"Modified.residue","Phosphotyrosins")
+uniprot_data[,Phosphotyrosins:=sapply(Phosphotyrosins, function(x){paste0(x, collapse=",")})]
 
 write.table(
   uniprot_data, "../Data/uniprotdata_4all_hits.tsv", sep = "\t", row.names = F, qmethod =
