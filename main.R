@@ -5,39 +5,27 @@ library(dplyr)
 library(ggplot2)
 library(stringi)
 library(stringr)
+library(data.table);setOption("datatable.showProgress",F)
 
 # read all grossman et al data from intact --------------------------------------------------------------------
 rm(list = ls())
-df <-
-  read.table(
-    '../Data/IM-22632.txt',sep = '\t',quote = "",stringsAsFactors = F,header =
-      T,comment.char = ""
-  )#,stringsAsFactors=F
-#discard irrelevant columns
-df %<>% select(
-  Feature.s..interactor.A,
-  Feature.s..interactor.B,
-  Annotation.s..interactor.A,
-  Annotation.s..interactor.B,
-  Xref.s..interactor.B,
-  Xref.s..interactor.A,
-  Experimental.role.s..interactor.A,
-  Experimental.role.s..interactor.B,
-  ID.s..interactor.A = X.ID.s..interactor.A,
-  ID.s..interactor.B,
-  Interaction.annotation.s.,
-  Interaction.identifier.s.,
-  Confidence.value.s.,
-  Interaction.detection.method.s.
-)
-df %<>% extract(Interaction.annotation.s.,
-                c("kinase.dep"), 
-                paste0("Phosphorylation\\-dependent interaction\\. The interaction is only detected ",
-                       "in the presence of the following kinases\\: ([^\\.]*)"))
-df$kinase.dep[is.na(df$kinase.dep)]=""
-df %<>% 
-  filter(Interaction.detection.method.s.=="psi-mi:\"MI:0397\"(two hybrid array)") %>% 
-  select(-Interaction.detection.method.s.) #Since most interaction assays are orthogonal, each detecting its own 
+dt <- fread('../Data/IM-22632.txt',select=c(
+  "Interaction identifier(s)",
+  "Interaction annotation(s)",
+  "Confidence value(s)",
+  "Interaction detection method(s)",
+  "Feature(s) interactor A",
+  "Feature(s) interactor B",
+  "Annotation(s) interactor A" ,
+  "Annotation(s) interactor B" ,
+  "Xref(s) interactor A",
+  "Xref(s) interactor B",
+  "#ID(s) interactor A",
+  "ID(s) interactor B", 
+  "Experimental role(s) interactor A",
+  "Experimental role(s) interactor B"
+  ))[`Interaction detection method(s)`=='psi-mi:"MI:0397"(two hybrid array)'][, 
+     `Interaction detection method(s)`:= NULL]#Since most interaction assays are orthogonal, each detecting its own 
 # subset of true interactions, vali- dation of data sets means comparing validation rates rather than discarding 
 # pairs that do not bind in the co-IP assay (Braun et al, 2009; Venkatesan et al, 2009). The validation rate of
 # ~50% (Fig 3A) is similar for phospho-tyrosine-dependent and phospho-tyrosine- independent interactions. It is 
@@ -45,75 +33,92 @@ df %<>%
 # However, it compares well to validation rates reported for other representative sets of PPIs with this co-IP 
 # assay (Braun et al, 2009; Weimann et al, 2013)
 
-df %<>% gather(key,value, ends_with(".A"), ends_with(".B")) %>%
-  extract(key,c("var","Interactor"),"(.*)\\.([AB])$") %>%
-  spread(var,value)
+setnames(dt,"#ID(s) interactor A","ID(s) interactor A")
+setnames(dt, make.names(colnames(dt)))
+
+dt[,
+   ':='(kinase_dep = str_match(Interaction.annotation.s.,
+                paste0("Phosphorylation\\-dependent interaction\\. The interaction is only detected ",
+                       "in the presence of the following kinases\\: ([^\\.]*)"))[,2],
+        kinase_dep_binary=TRUE,
+        confidence = as.numeric(str_match(Confidence.value.s.,"^intact\\-miscore\\:(.*)$")[,2]))
+   ][,
+     ':='(Interaction.annotation.s.= NULL,
+     Confidence.value.s.=NULL)
+     ]
+dt[is.na(kinase_dep),
+   ':='(kinase_dep="",
+        kinase_dep_binary=FALSE)]
+df = copy(dt)
+df %<>% gather(key,value, ends_with(".A"), ends_with(".B")) 
+df %<>% extract(key,c("var","Interactor"),"(.*)\\.([AB])$",remove = T)
+df %<>% spread(var,value)
+# df = copy(df)
+# df[,
+#    ':='(
+#      role = str_match(
+#        Experimental.role.s..interactor,
+#        "^psi\\-mi\\:\"MI\\:(?:\\d+)\"\\((prey|bait|neutral)(?: component)?\\)$"
+#      )[,2],
+#      Experimental.role.s..interactor = NULL
+#    )]
+df %<>% extract(Experimental.role.s..interactor,c("role"),"^psi\\-mi\\:\"MI\\:(?:\\d+)\"\\((prey|bait|neutral)(?: component)?\\)$")
+
+df %<>% separate(ID.s..interactor,c("Interactor_ID_db","Interactor_ID"),'\\:')
 
 
-df %<>% extract(Confidence.value.s.,c("confidence"),"^intact\\-miscore\\:(.*)$",convert =
-                  T) %>%
-  extract(
-    Experimental.role.s..interactor,c("role"),'^psi\\-mi\\:"MI\\:(?:\\d+)"\\((prey|bait|neutral)(?: component)?\\)$',convert =
-      T
-  )  %>%
-  separate(ID.s..interactor,c("Interactor_ID_db","Interactor_ID"),'\\:',convert =
-             F)
+proteins = df[,
+              .(ID_DB=Interactor_ID_db[1], ID=Interactor_ID[1], 
+                refseq=str_match(Xref.s..interactor[1],"refseq:([A-Z]+\\_\\d+(?:.\\d+)?)(?:[(|].*)?$")[,2], 
+                annotations__grossmann=Annotation.s..interactor[1]),
+              ,by=.(Interactor_ID_db, Interactor_ID)]
+
+df[,':='(Xref.s..interactor=NULL,
+         Annotation.s..interactor=NULL,
+         Interactor = NULL)]
+backup.DT=copy(df)
+
+
+
+df=copy(backup.DT)
+
+df = dcast(df,Interaction.identifier.s. + kinase_dep + kinase_dep_binary + 
+        confidence ~ role, 
+      value.var = c("Interactor_ID_db", "Interactor_ID", "Feature.s..interactor"))
+
+# done mapping, save relevant data
+write.table(
+  df, "../Data/interactions_grossmann.tsv", sep = "\t", row.names = F, qmethod =
+    "double"
+)
 
 # Map some ORFs that indentfied by intact IDs to their corresponding Uniprot IDs
-to_map = df %>% filter(Interactor_ID_db == "intact") %>%
-  select(Interactor_ID_db, Interactor_ID,Xref.s..interactor) %>%
-  extract(
-    Xref.s..interactor,c("From"),"refseq:([A-Z]+\\_\\d+(?:.\\d+)?)(?:[(|].*)?$",remove =
-      T,convert = F
-  ) %>%
-  distinct()
 
 url = 'http://www.uniprot.org/mapping/'
 params =   c(
   'from', 'REFSEQ_NT_ID',
   'to', 'ACC',
   'format', 'tab',
-  'query', paste(to_map$From, collapse = " ")
+                          'query', paste(proteins[Interactor_ID_db == "intact", refseq], collapse = " ")
 )
 params = lapply(params, URLencode)
-query = paste(params[c(T,F)], params[c(F,T)], sep = "=", collapse = "&")
-mapping = read.table(paste0(url,'?',query), header = T, stringsAsFactors = F)
-mapping %<>% distinct(From) %>% right_join(to_map)
-mapping
+query_url = paste0(url,'?',paste(params[c(T,F)], params[c(F,T)], sep = "=", collapse = "&"))
+mapping = fread(query_url)
+setkey(mapping,From)
+mapping=unique(mapping)
+setkey(proteins,refseq)
+proteins[mapping,':='(ID_DB="uniprotkb",
+                      ID=To)]
+setkey(proteins,ID_DB,ID)
 
-df %<>% left_join(select(mapping,-From))
-df %<>%
-  mutate(Interactor_ID = ifelse(Interactor_ID_db == "intact",To, Interactor_ID)) %>%
-  select(-Interactor_ID_db,-To)
-# done mapping, save relevant data
-write.table(
-  df, "../Data/all_intact_data_from_grossmanEtAl.tsv", sep = "\t", row.names = F, qmethod =
-    "double"
-)
+cat("removed the following entires from the analysis:\n")
+show(proteins["intact"])
 
+proteins=proteins["uniprotkb"][,ID_DB:=NULL]
 
-
-# getting sequences for ORFs without Uniprotkb ID
-url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&rettype=fasta_cds_aa&id='
-sequences = data.frame(seq = sapply((mapping %>% filter(is.na(
-  To
-)))$From,
-function(From) {
-  paste0(readLines(paste0(url,From))[-1], collapse = "")
-}))
-sequences$From = rownames(sequences)
-rownames(sequences) <- NULL
-# and do nothing with it
-
-# Loading sequences and know modifications from uniprot for all ORFst --------------------------------------------------------------------
-rm(list = ls())
-df = read.table(
-  "../Data/all_intact_data_from_grossmanEtAl.tsv", sep = "\t",header = T,stringsAsFactors = F
-)
-
-uniprot_ACCs = data.frame(ID = unique(toupper(df$Interactor_ID[!is.na(df$Interactor_ID)])),stringsAsFactors = F) %>%
-  extract(ID,c("canonic","isoform"),"^([^\\-]*)(?:\\-(.*))?$", remove = F)
-uniprot_ACCs_canonic = unique(uniprot_ACCs$canonic)
+proteins[, c('canonic','isoform') := data.table(str_match(proteins$ID, "^([^\\-]*)(?:\\-(.*))?$")[,2:3]) ]
+setkey(proteins,"canonic")
+uniprot_ACCs_canonic = unique(proteins)$canonic
 
 url = 'http://www.uniprot.org/uniprot/'
 uniseq = NULL
@@ -135,36 +140,35 @@ for (uniprot_ACCs_canonic_i in split(uniprot_ACCs_canonic,floor(0:(length(
   )
   print(paste("fetched from uniprot:", nrow(uniseq)))
 }
+uniseq <- as.data.table(uniseq)
+# dropped = uniseq[Sequence=="",.(ID=Entry)]
+# uniseq <- uniseq[Sequence!=""]
+setkey(uniseq,"Entry")
+setnames(uniseq,"Entry","canonic")
 
-uniprot_data <-
-  left_join(uniprot_ACCs, uniseq, by = c("canonic" = "Entry"))
-dropped = (uniprot_data  %>% filter(stri_length(uniprot_data$Sequence) ==
-                                      0))$ID
-if (length(dropped) != 0) {
-  warning(
-    paste0(
-      "dropped Entries with Interactor(s) ",
-      paste0(dropped, collapse = ", "),
-      " as the UniProt Isoform identifier could not be mapped to a sequence"
-    )
-  )
-  uniprot_data %<>% filter(stri_length(uniprot_data$Sequence) != 0)
-}
+proteins=uniseq[proteins]
+# 
+# if (length(dropped) != 0) {
+#   warning(
+#     paste0(
+#       "dropped Entries with Interactor(s) ",
+#       paste0(dropped, collapse = ", "),
+#       " as the UniProt Isoform identifier could not be mapped to a sequence"
+#     )
+#   )
+# }
 
 # done getting data fronm uniprot, save results
 write.table(
-  uniprot_data, "../Data/all_data_from_uniprot.tsv", sep = "\t", row.names = F, qmethod =
-    "double"
+  proteins, "../Data/all_data_from_uniprot.tsv", sep = "\t", row.names = F
 )
 
 # parsing data from uniprot --------------------------------------------------------------------
 rm(list = ls())
 df = read.table(
-  "../Data/all_intact_data_from_grossmanEtAl.tsv", sep = "\t",header = T,stringsAsFactors = F
+  "../Data/interactions_grossmann.tsv", sep = "\t",header = T,stringsAsFactors = F
 )
-uniprot_data = read.table(
-  "../Data/all_data_from_uniprot.tsv", sep = "\t",header = T,colClasses = "character"
-)
+uniprot_data = fread("../Data/all_data_from_uniprot.tsv",sep="\t")
 
 quotemeta <- function(string) {
   gsub("([.|()\\^{}+$*?]|\\[|\\])", "\\\\\\1", string)
@@ -217,16 +221,14 @@ parse_alternative_sequence <-
     paste(df$mechismo_dif_string, collapse = " ")
   }
 
-uniprot_data =  uniprot_data %>% rowwise() %>%
-  dplyr::mutate(mechismo_dif_string =
-                  ifelse(
-                    is.na(isoform),
-                    "",
-                    parse_alternative_sequence(
-                      Alternative.sequence,Alternative.products..isoforms.,
-                      ID,Sequence
-                    )
-                  )) %>% ungroup()
+uniprot_data[is.na(isoform),
+             mechismo_dif_string :=""]
+
+uniprot_data[!is.na(isoform),
+             mechismo_dif_string:= parse_alternative_sequence(Alternative.sequence,Alternative.products..isoforms.,
+                                                               ID,Sequence),
+             by = ID]
+
 
 canonical2isoform <-
   function(canonical_sequence, ops) {
@@ -236,20 +238,23 @@ canonical2isoform <-
                                                          position = as.numeric(position))
     sequence[ops$pos] = ops$to
     idx_map = cumsum(str_length(sequence))
-    list(
+    data.table(
       isoform_sequence = paste0(sequence,collapse = ""), canonical2isoform_idx =
-        idx_map
+        list(idx_map)
     )
   }
-canonical_sequence_list = uniprot_data$Sequence
-op_list = str_match_all(uniprot_data$mechismo_dif_string, "([A-Z])(\\d+)(X(?![A-Z]))?([A-WYZ]?[A-Z]*)")
-tmp = mapply(canonical2isoform , canonical_sequence_list, op_list)
-uniprot_data$isoform_sequence = unlist(tmp[c(T,F)])
-canonical2isoform_idx = tmp[c(F,T)]
+uniprot_data[, ops := str_match_all(uniprot_data$mechismo_dif_string, "([A-Z])(\\d+)(X(?![A-Z]))?([A-WYZ]?[A-Z]*)")]
+uniprot_data[,
+             c("isoform_sequence", "canonical2isoform_idx") := 
+               do.call(rbind,Map(canonical2isoform , Sequence, ops))][, ops:=NULL]
+
+canonical2isoform_idx = uniprot_data$canonical2isoform_idx
+save(canonical2isoform_idx,file="../Data/canonical2isoform_idx.RData")
+uniprot_data[,canonical2isoform_idx:=NULL]
 
 write.table(
   uniprot_data, "../Data/uniprotdata_4all_hits.tsv", sep = "\t", row.names = F, qmethod =
     "double"
 )
-save(canonical2isoform_idx,file="../Data/canonical2isoform_idx.RData")
+
 

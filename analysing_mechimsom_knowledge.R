@@ -1,11 +1,13 @@
 require(RMySQL)
 library(data.table)
+library(stringr)
 
-dt = fread("../Data/all_intact_data_from_grossmanEtAl.tsv")
+dt = fread("../Data/all_intact_data_from_grossmanEtAl.tsv")[,
+                                                            ID_canonic:=str_replace(Interactor_ID,"\\-.*","")]
 
 dt = dt[, 
-        .(ID_prey = Interactor_ID[role == "prey"],
-          ID_bait = Interactor_ID[role == "bait"],
+        .(ID_prey = ID_canonic[role == "prey"],
+          ID_bait = ID_canonic[role == "bait"],
           kinase.dep_binary = kinase.dep == "",
           n_dep_kinases = str_count(kinase.dep,"\\)")
         ),
