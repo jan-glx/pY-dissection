@@ -19,11 +19,15 @@ generateMechismoInput <- function(){
     }
   
   generateAllMechismoStrings = function(ID, mechismo_dif_string, unmod_Y_pos){
-    mechismo_dif_strings = str_split(mechismo_dif_string," ")[[1]]
-    mechismo_strings= paste0(ID,'/',mechismo_dif_strings)
-    inserted_Y_pos_lists = lapply(str_locate_all(mechismo_dif_strings, "Y(?!\\d)"),function(x){x[,1]})
-    mechismo_strings = c(mechismo_strings, unlist(mapply(generateAllMechismoStringsForInsertion,
-                                                       ID,mechismo_dif_strings,inserted_Y_pos_lists)))
+    if(mechismo_dif_string!=""){
+      mechismo_dif_strings = str_split(mechismo_dif_string," ")[[1]]
+      mechismo_strings= paste0(ID,'/',mechismo_dif_strings)
+      inserted_Y_pos_lists = lapply(str_locate_all(mechismo_dif_strings, "Y(?!\\d)"),function(x){x[,1]})
+      mechismo_strings = c(mechismo_strings, unlist(mapply(generateAllMechismoStringsForInsertion,
+                                                         ID,mechismo_dif_strings,inserted_Y_pos_lists)))
+    }else{
+      mechismo_strings= NULL
+    }
     if(length(unmod_Y_pos)>0)
       mechismo_strings = c(mechismo_strings, paste0(ID, "/Y",unmod_Y_pos,"Yp"))
     mechismo_strings
