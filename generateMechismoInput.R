@@ -1,4 +1,5 @@
 library(stringr)
+library(data.table)
 
 generateMechismoInput <- function(){
   uniprot_data = fread("../Data/uniprotdata_4all_hits.tsv")

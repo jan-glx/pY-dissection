@@ -103,23 +103,8 @@ library(stringr)
 library(ggplot2)
 
 uniprot_data = fread("../Data/uniprotdata_4all_hits.tsv",sep="\t")
-setkey(uniprot_data,Interactor_ID_db,Interactor_ID)
-df = fread("../Data/interactions_grossmann.tsv")
-setkey(df,Interactor_ID_db_bait,Interactor_ID_bait)
-df=df[uniprot_data,cannonic_ID_bait:=canonic]
-setkey(df,Interactor_ID_db_prey,Interactor_ID_prey)
-df=df[uniprot_data,cannonic_ID_prey:=canonic]
-dropped=df[Interactor_ID_db_prey!="uniprotkb"|Interactor_ID_db_bait!="uniprotkb"]
-write.table(
-  dropped, file.path("..","Data",paste0("dropped_from_grossman.tsv")), sep = "\t", row.names = F, qmethod =
-    "double"
-)
-df=df[Interactor_ID_db_prey=="uniprotkb"&Interactor_ID_db_bait=="uniprotkb"
-      ][,
-        ':='(Interactor_ID_db_prey=NULL,
-             Interactor_ID_db_bait=NULL)]
-setkey(df,cannonic_ID_bait,cannonic_ID_prey)
-
+df = fread("../Data/valid_interactions_grossmann.tsv")
+setkey(df,canonic_ID_bait,canonic_ID_prey)
 
 folder=file.path("..","Data","Out")
 ffiles <- list.files( path=folder, pattern = "\\.site\\_table\\.tsv$")

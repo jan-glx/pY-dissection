@@ -2,23 +2,15 @@ require(RMySQL)
 library(data.table)
 library(stringr)
 
-dt = fread("../Data/all_intact_data_from_grossmanEtAl.tsv")[,
-                                                            ID_canonic:=str_replace(Interactor_ID,"\\-.*","")]
-
-dt = dt[, 
-        .(ID_prey = ID_canonic[role == "prey"],
-          ID_bait = ID_canonic[role == "bait"],
-          kinase.dep_binary = kinase.dep == "",
-          n_dep_kinases = str_count(kinase.dep,"\\)")
-        ),
-        by = .(Interaction.identifier.s.,kinase.dep,confidence)]
+dt = fread("../Data/valid_interactions_grossmann.tsv")
+setkey(dt,canonic_ID_prey,canonic_ID_bait)
 
 
 # mechismo_base = fread("../Data/getknownpairs.sql.tsv") # alternative to querying the database
 fistdb=dbConnect(RMySQL::MySQL(),"fistdb",user="anonymous")
 
-pair_list=paste0("('",dbEscapeStrings(fistdb,dt$ID_prey),
-              "', '",dbEscapeStrings(fistdb,dt$ID_bait),"')",collapse=", ")
+pair_list=paste0("('", dbEscapeStrings(fistdb,dt[,canonic_ID_prey]),
+              "', '", dbEscapeStrings(fistdb,dt[,canonic_ID_bait]),"')",collapse=", ")
 
 part1="
 SELECT sa1.id idA,
@@ -56,7 +48,7 @@ hits=rbind(hits,hits[,':='(idA=idB,acA=acB,idB=idA,acB=acA)])
 setkey(hits,acA,acB)
 hits=unique(hits)#[idA>=idB]
 
-setkey(dt,ID_prey,ID_bait)
+
 
 hits = hits[dt,nomatch=0]
 
