@@ -38,12 +38,22 @@ analyse_mechismo_output <-
     mechismo_out = mechismo_out[mut_a1 == "Yp"][,mut_a1:=NULL]
     
     proteins = mechismo_out[,
-                            .(iupred = sum(mean_iupred)),
+                            .(n_unstructured = sum(mean_iupred),
+                              n_structured = sum(1-mean_iupred),
+                              ratio_unstuctured =  mean(mean_iupred)),
                             by=primary_id_a1]
-    proteins[,.(.N,IDs=list(primary_id_a1)),keyby=iupred]
-    has_unstructured_Y = proteins[iupred>0,primary_id_a1]
+    proteins[,.(.N,IDs=list(primary_id_a1)),keyby=n_unstructured]
+    has_unstructured_Y = proteins[n_unstructured>0,primary_id_a1]
+    has_no_structured_Y = proteins[n_structured==0,primary_id_a1]
+    mostly_unstructured = proteins[ratio_unstuctured>0.5,primary_id_a1]
+    
     n_int_with_unstructured_Y= df[canonic_ID_bait %in% has_unstructured_Y | 
                                     canonic_ID_prey %in% has_unstructured_Y,.N]
+    
+    n_int_with_no_structured_Y= df[canonic_ID_bait %in% has_no_structured_Y | 
+                                    canonic_ID_prey %in% has_no_structured_Y,.N]
+    df[canonic_ID_bait %in% mostly_unstructured | 
+         canonic_ID_prey %in% mostly_unstructured,.N]
     cat("Of the ",nrow(df)," intractions ", n_int_with_unstructured_Y, 
         "contain tyrosine(s) in a region predicted as unstructured and ",
         nrow(df)-n_int_with_unstructured_Y," do not.\n")
@@ -99,13 +109,14 @@ analyse_mechismo_output <-
     hits[,pdb_ids:=sapply(pdb_ids,function(x){paste0(x, collapse=", ")})]
     
     setkey(hits,Interactor_ID_bait)
-    uni_colnames = colnames(uniprot_data)
+    uni_colnames = copy(colnames(uniprot_data))
     joined=setkey(hits[setnames(uniprot_data,paste0(uni_colnames,"_bait")),
                        nomatch=0
                        ],
                   Interactor_ID_prey)[setnames(uniprot_data,paste0(uni_colnames,"_prey")),
                                       nomatch=0
                                       ]
+    setnames(uniprot_data,uni_colnames)
     write.table(
       joined, file.path(folder,paste0(filename,"_joined_joined.tsv")), sep = "\t", row.names = F, qmethod =
         "double"
@@ -131,6 +142,7 @@ library(tidyr)
 library(dplyr)
 library(stringr)
 library(ggplot2)
+library(data.table)
 
 printSetDiffSizes <- function(A,B) {
   nA = deparse(substitute(A))
