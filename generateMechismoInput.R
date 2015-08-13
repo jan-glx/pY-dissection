@@ -1,8 +1,7 @@
 library(stringr)
 library(data.table)
 
-generateMechismoInput <- function(){
-  uniprot_data = fread("../Data/uniprotdata_4all_hits.tsv")
+generateMechismoInput <- function(uniprot_data){
   
   Y_pos_list = lapply(str_locate_all(uniprot_data$Sequence,"Y"),function(x){x[,1]})
   mod_pos_list = lapply(str_match_all(uniprot_data$mechismo_dif_string, "[A-Z](\\d+)[A-Z]+"),function(x){as.numeric(x[,2])})
@@ -39,5 +38,15 @@ generateMechismoInput <- function(){
                             unmod_Y_pos_list)
   cat(unlist(mechismo_input_line_list),file="../Data/mechismoinput.txt",sep="\n")
 }
-generateMechismoInput()
+uniprot_data = fread("../Data/uniprotdata_4all_hits.tsv")
+generateMechismoInput(uniprot_data)
+
+setkey(uniprot_data,ID)
+inputs = unique(uniprot_data)[,.(seq_length = str_length(Sequence),
+                                 input = paste0(">", ID, "\n", Sequence))
+                              ][seq_length>=15&seq_length<=4000][,cum_seq_length := cumsum(seq_length)]
+cat(inputs[cum_seq_length<200000][1:.N<=2000,input],
+    sep = "\n",
+    file= paste0("../Data/NetPhos2_input_",1,".fasta"))
+
 
