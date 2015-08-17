@@ -144,23 +144,13 @@ library(stringr)
 library(ggplot2)
 library(data.table)
 
-printSetDiffSizes <- function(A,B) {
-  nA = deparse(substitute(A))
-  nB = deparse(substitute(B))
-  uA = unique(A)
-  uB = unique(B)
-  cat(paste0("In ",nA,": ",length(uA),"\n"))
-  cat(paste0("In ",nA, " but not in ", nB ,": ",length(setdiff(uA,uB)),"\n"))
-  cat(paste0("In ",nB,": ",length(uB),"\n"))
-  cat(paste0("In ",nB, " but not in ", nA ,": ",length(setdiff(uB,uA)),"\n"))
-  cat(paste0("In ",nA, " and in ", nB ,": ",length(intersect(uB,uA)),"\n"))
-}
+source("misc.R")
 
 uniprot_data = fread("../Data/uniprotdata_4all_hits.tsv",sep="\t")
 setkey(uniprot_data,ID)
 #uniprot_data[,Phosphotyrosins:=lapply(strsplit(Phosphotyrosins,","),as.integer)]
 df = fread("../Data/valid_interactions_grossmann.tsv")
-df[,n_kinases:=str_count(kinase_dep,"\\)")]
+#df[,kinase_dep:=strsplit(kinase_dep,", ")]
 setkey(df,canonic_ID_bait,canonic_ID_prey)
 
 folder=file.path("..","Data","Out")
