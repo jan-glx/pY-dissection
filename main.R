@@ -46,9 +46,15 @@ dt[,
      ':='(Interaction.annotation.s.= NULL,
      Confidence.value.s.=NULL)
      ]
-dt[is.na(kinase_dep),
-   ':='(kinase_dep="",
-        kinase_dep_binary=FALSE)]
+the_nine=c('FYN (P06241)','ABL2 (P42684)','TNK1 (Q13470)','FRK (P42685)','FES (P07332)','PTK2 (Q05397)',
+           'SYK (P43405)','BMX (P51813)','JAK2 (O60674)')
+dt[, kinase_dep := strsplit(kinase_dep,", ")]
+dt[, kinase_dep := lapply(kinase_dep,intersect,the_nine)]
+dt[, kinase_dep_n := sapply(kinase_dep,length)]
+dt[, kinase_dep_binary := kinase_dep_n>0]
+dt[, kinase_dep:=sapply(kinase_dep, function(x){paste0(x, collapse=", ")})]
+
+
 df = copy(dt)
 df %<>% gather(key,value, ends_with(".A"), ends_with(".B")) 
 df %<>% extract(key,c("var","Interactor"),"(.*)\\.([AB])$",remove = T)
@@ -117,7 +123,7 @@ show(proteins["intact"])
 proteins=proteins["uniprotkb"][,ID_DB:=NULL]
 
 proteins[, c('canonic','isoform') := data.table(str_match(proteins$ID, "^([^\\-]*)(?:\\-(.*))?$")[,2:3])
-         ][, isoform=as.integer(isoform)]
+         ][, .(isoform=as.integer(isoform))]
 setkey(proteins,"canonic")
 uniprot_ACCs_canonic = unique(proteins)$canonic
 
@@ -128,7 +134,7 @@ for (uniprot_ACCs_canonic_i in split(uniprot_ACCs_canonic,floor(0:(length(
 ) - 1) / 100))) {
   params =   c(
     'query', paste0('"accesion+',uniprot_ACCs_canonic_i,'"', collapse = "OR"),
-    'columns', 'id,sequence,feature(MODIFIED RESIDUE),feature(ALTERNATIVE SEQUENCE),comment(ALTERNATIVE PRODUCTS)',
+    'columns', 'id,entry name,genes(PREFERRED),sequence,feature(MODIFIED RESIDUE),feature(ALTERNATIVE SEQUENCE),comment(ALTERNATIVE PRODUCTS)',
     'format', 'tab'
   )
   params = lapply(params, URLencode)
