@@ -50,3 +50,12 @@ cat(inputs[cum_seq_length<200000][1:.N<=2000,input],
     file= paste0("../Data/NetPhos2_input_",1,".fasta"))
 
 
+setkey(uniprot_data,ID)
+inputs = unique(uniprot_data)[,.(seq_length = str_length(Sequence),
+                                 input = paste0(">", ID, "\n", Sequence))
+                              ][seq_length>=5][,cum_seq_length := cumsum(seq_length)]
+cat(inputs[,input],
+    sep = "\n",
+    file= paste0("../Data/GPS_input_",1,".fasta"))
+
+
