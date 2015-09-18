@@ -221,6 +221,7 @@ int anchor_(const char* seq_name, const char* seq, int len,int verb, char * path
     to_output("Amino acid number\tOne letter code\tANCHOR probability value\tANCHOR output\tIUPred probability value\tANCHOR score\tS\tEint\tEgain\n");
     
     for (i=0;i<SEQ->len;i++) {
+      if(SEQ->seq[i]=='Y'){
       to_output("%5d\t%c\t%9.4f\t%5d\t%9.4f\t%9.4f\t%9.4f\t%9.4f\t%9.4f\n",
              i+1,SEQ->seq[i],
                          p[i],
@@ -230,7 +231,7 @@ int anchor_(const char* seq_name, const char* seq, int len,int verb, char * path
                                                   (E1->iup_av[i]+E2->iup_av[i]+E3->iup_av[i])/3,
                                                   -(E1->external[i]+E2->external[i]+E3->external[i])/3,
                                                   (E1->extglob[i]+E2->extglob[i]+E3->extglob[i])/3);
-    }
+      }}
   }
   free(p);
   free(reg_filt);

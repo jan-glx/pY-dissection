@@ -1,13 +1,6 @@
-library(magrittr)
-library(tidyr)
-library(dplyr)
-library(stringr)
-library(ggplot2)
-library(data.table)
-
 source("misc.R")
 
-grossmann = fread("../Data/valid_interactions_grossmann.tsv")
+
 
 # finding sites and uniprot infor for them ----------
 uniprot_data = fread("../Data/uniprotdata_4all_hits.tsv",sep="\t",
@@ -42,6 +35,10 @@ setnames(psp,"SITE_+/-7_AA","neighbourhood")
 psp[,c("res_kind","res"):=data.table(str_match(MOD_RSD,"([YST])(\\d+)-p")[,-1])][,MOD_RSD:=NULL]
 psp <- psp[res_kind=="Y"][,':='(res_kind=NULL,res=as.integer(res))][]
 psp[is.na(LT_LIT),LT_LIT:=0][is.na(MS_LIT),MS_LIT:=0][is.na(MS_CST),MS_CST:=0]
+psp[,myPSP:=LT_LIT>3|MS_LIT>2|MS_CST>27]
+setkey(psp,ACC_ID)
+psp[psp[,rep(T,!any(myPSP)),by=.(ACC_ID)],myPSP:=NA][]
+
 printSetDiffSizes(psp[,ACC_ID],uniprot_data[,canonic])
 
 
@@ -81,25 +78,42 @@ the_nine=setnames(data.table(str_match(the_nine,"(.+) \\((.+)\\)")),c("full_stri
 setkey(pspSub,KIN_ACC_ID)
 setkey(the_nine,ACC)
 
+interesting_kinases=unique(c(pspSub[,.N,by=KIN_ACC_ID][N>10,KIN_ACC_ID],
+                      the_nine[pspSub[,.N,by=KIN_ACC_ID][N>1,KIN_ACC_ID],ACC,nomatch=0]))
+
+pspSub = pspSub[interesting_kinases,nomatch=0]
+
+pspSub_sites = pspSub[,setNames(lapply(interesting_kinases,function(x)x %in% KIN_ACC_ID),interesting_kinases),
+                                by=.(SUB_ACC_ID,res,neighbourhood)]
+setkey(pspSub_sites,SUB_ACC_ID)
+invisible(lapply(interesting_kinases,function(kinase)
+  pspSub_sites[pspSub_sites[,rep(T,!any(get(kinase))),by=.(SUB_ACC_ID)],(kinase):=NA][]
+))
+#melt(pspSub_sites[,4:34,with=F])[,.N,by=value]
+
+psp_sites = pspSub_sites[psp,on=c("SUB_ACC_ID"="ACC_ID","res"="res","neighbourhood"="neighbourhood")]
+fwritelist(psp_sites,"../Data/all_sites_pspPos.tsv")
+
+
+setkey(pspSub,KIN_ACC_ID,res)
 pspSub = pspSub[the_nine,nomatch=0]
+
+
 
 setkey(pspSub,SUB_ACC_ID,res)
 setkey(sites,canonic,res)
 
 sites_pspSub=pspSub[,.(kinases=list(GENE)),by=.(SUB_ACC_ID,res)]
+fwritelist(sites_pspSub,"../Data/sites_pspPos.tsv")
+
 sites[,kinases_psp:=rep(list(character()),.N)][sites_pspSub,kinases_psp:=kinases,nomatch=0]
-
-
-
-
-
 
 
 
 # adding mechismo output -------------
 
 filename="enFcexLbnj.site_table.tsv"
-
+folder=file.path("..","Data","Out")
 mechismo_out = fread(file.path(folder,filename),
                      select=c("primary_id_a1", "primary_id_b1", "pos_a1", "mut_a1", 
                               "user input", "mismatch", "conf", "ie","name_b1","idcode","iupred"))[primary_id_a1!=""]
@@ -136,12 +150,11 @@ setkey(mechismo_sites,primary_id_a1, pos_a1)
 sites=mechismo_sites[sites,nomatch=0]
 
 
-
+fwritelist(sites,"../Data/sites.tsv")
 
 
 # unstructured regions are more likeli to have phophorilated Tyrosins (ods ratio: 3.15 (2.27..4.31 95%cI) )
 fisher.test(table(sites[,.(iu_pred,phosphorylated_by_uniprot)]))
 sites[,mean(phosphorylated_by_uniprot),by=.(iu_pred)]
-
 
 
