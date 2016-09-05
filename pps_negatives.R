@@ -27,6 +27,9 @@ sites=dt[sites,mult="first"][,res_kind:=NULL]
 
 fwritelist(sites,"../Data/pps_all_sites_with_iupred.tsv")
 
+# add pspPos info to psp  -----
+sites <- freadlist("../Data/pps_all_sites_with_iupred.tsv")
+
 pos_sites = freadlist("../Data/all_sites_pspPos.tsv")[,':='(neighbourhood=NULL,GENE=NULL)]
 setkey(pos_sites,SUB_ACC_ID,res)
 a=pos_sites[sites]
