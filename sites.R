@@ -37,7 +37,8 @@ psp <- psp[res_kind=="Y"][,':='(res_kind=NULL,res=as.integer(res))][]
 psp[is.na(LT_LIT),LT_LIT:=0][is.na(MS_LIT),MS_LIT:=0][is.na(MS_CST),MS_CST:=0]
 psp[,myPSP:=LT_LIT>3|MS_LIT>2|MS_CST>27]
 setkey(psp,ACC_ID)
-psp[psp[,rep(T,!any(myPSP)),by=.(ACC_ID)],myPSP:=NA][]
+#psp[psp[,rep(T,!any(myPSP)),by=.(ACC_ID)],myPSP:=NA][] it does not make secce to do this now
+psp[!(myPSP),myPSP:=NA]
 
 printSetDiffSizes(psp[,ACC_ID],uniprot_data[,canonic])
 
@@ -153,7 +154,7 @@ sites=mechismo_sites[sites,nomatch=0]
 fwritelist(sites,"../Data/sites.tsv")
 
 
-# unstructured regions are more likeli to have phophorilated Tyrosins (ods ratio: 3.15 (2.27..4.31 95%cI) )
+# unstructured regions are more likely to have phophorylated Tyrosins (ods ratio: 3.15 (2.27..4.31 95%cI) )
 fisher.test(table(sites[,.(iu_pred,phosphorylated_by_uniprot)]))
 sites[,mean(phosphorylated_by_uniprot),by=.(iu_pred)]
 
