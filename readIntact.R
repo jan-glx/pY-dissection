@@ -1,5 +1,6 @@
 library(data.table)
 options(datatable.prettyprint.char = 25L)
+library(binom)
 
 
 
@@ -33,6 +34,8 @@ day_zero = min(grossmann[, `Creation date`])
 grossmann = grossmann[str_detect(`Interaction annotation(s)`,"Phosphorylation-dependent interaction"),
                        .(id.A,id.B)] # only keep pY dep PPIs and only the IDs
 
+grossmann %<>% extract(id.A,"id.A","(intact.*|[^-]*)(?:-[^-]*)*") %>% extract(id.B,"id.B","(intact.*|[^-]*)(?:-[^-]*)*") %>% unique()
+
 preys = unique(grossmann[,id.A])
 baits = unique(grossmann[,id.B])
 preysAndBaits = unique(c(preys,baits))
@@ -63,9 +66,10 @@ both_hit = intact[grossmann, nomatch=0]
 cat("Of the ", nrow(grossmann), " pY dependent PPIs found by Grossmann et al. ", 
     nrow(both_hit), " (",nrow(both_hit)/nrow(grossmann)*100,"%) are found elsewhere as PPI on intact.",
     "\nWhile of the ",length(preys)*length(baits), " PPP that Grossmann et al. could have found as pY PPI ", 
-    nrow(inthit), " (",nrow(intact)/(length(preys)*length(baits))*100,"%)are found elsewhere as PPI on intact.",
+    nrow(intact), " (",nrow(intact)/(length(preys)*length(baits))*100,"%)are found elsewhere as PPI on intact.",
     sep="")
-
+#Of the 294 pY dependent PPIs found by Grossmann et al. 18 (6.122449%) are found elsewhere as PPI on intact.
+#While of the 11033 PPP that Grossmann et al. could have found as pY PPI 119 (1.078582%)are found elsewhere as PPI on intact.
 
 
 preys_in_intact = intact[, .N, keyby=id.A][preys][is.na(N),N:=0][]
