@@ -1,5 +1,5 @@
 # Dissecting phosphotyrosine dependent protein-protein interactions
-A set of R scripts used to obtain the results presented in the same-named report on an internship of mine. Likely not intersting for anyone. More a reference for myself and mabye for someone in the group of Rob Russell working on the project.
+A set of R scripts used to obtain the results presented in the same-named report on an internship of mine. Likely not interesting for anyone. More a reference for myself and maybe for someone in the group of Rob Russell working on the project.
 
 ## Requirements
 * a `Data` folder parallel to the repository clone containing:
