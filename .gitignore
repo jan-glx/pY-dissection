@@ -1,0 +1,12 @@
+.Rproj.user
+.Rhistory
+.RData
+packrat/lib*/
+packrat/src/
+bericht.tex
+tmp.R
+*.opensdf
+Debug/*
+anchor.sln
+anchor.vcxproj
+anchor.vcxproj.filters
